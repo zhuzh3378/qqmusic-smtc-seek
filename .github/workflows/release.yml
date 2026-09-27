@@ -1,0 +1,54 @@
+name: 构建并发布
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v6
+
+      - name: 安装 Rust 工具链
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: i686-pc-windows-msvc
+
+      - name: 缓存 Rust 依赖
+        uses: Swatinem/rust-cache@v2
+
+      # .cargo/config.toml 里已经钉了 [build] target = i686-pc-windows-msvc,
+      # 所以这里不用重复传 --target。
+      - name: 编译 Payload
+        run: cargo build --package payload --release
+
+      # 装进 QQ 音乐的必须是 32 位:塞进去一个 64 位 DLL 会让它直接起不来。
+      # 所以在发布前先读 PE 头,不对就中断,别让产物出门。
+      - name: 校验产物是 32 位
+        shell: powershell
+        run: |
+          $dll = "target/i686-pc-windows-msvc/release/payload.dll"
+          $bytes = [IO.File]::ReadAllBytes($dll)
+          $peOffset = [BitConverter]::ToInt32($bytes, 0x3C)
+          $machine = [BitConverter]::ToUInt16($bytes, $peOffset + 4)
+          if ($machine -ne 0x014C) {
+              throw ('payload.dll 不是 32 位(PE machine = 0x{0:X4},应为 0x014C)' -f $machine)
+          }
+          'OK: {0} ({1:N0} 字节, i386 32 位)' -f $dll, $bytes.Length
+
+      - name: 创建 Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          generate_release_notes: true
+          files: |
+            target/i686-pc-windows-msvc/release/payload.dll

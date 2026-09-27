@@ -62,6 +62,8 @@ QQ 音乐 22.71,Windows 11。跳转目标由外部 SMTC 客户端发起(`TryChan
 - Windows,QQ 音乐 22.71(其他版本见下面"QQ 音乐升级了怎么办")
 - 自己编译需要 Rust(稳定版即可)+ 一套带 C++ 工具链的 Visual Studio / Build Tools
 
+不想编译的话,直接下载 [Releases](../../releases) 里的 `payload.dll`,按下面"手动安装"那一步放进目录即可。
+
 ### 编译
 
 ```powershell
