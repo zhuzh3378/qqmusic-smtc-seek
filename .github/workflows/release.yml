@@ -27,23 +27,30 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       # .cargo/config.toml 里已经钉了 [build] target = i686-pc-windows-msvc,
-      # 所以这里不用重复传 --target。
-      - name: 编译 Payload
-        run: cargo build --package payload --release
+      # 所以这里不用重复传 --target。显式指定 --target-dir 是为了让产物路径确定 ——
+      # rust-cache 之类的动作可能改动 CARGO_TARGET_DIR,那样下一步就找不到文件。
+      - name: Build payload
+        run: cargo build --package payload --release --target-dir target
 
       # 装进 QQ 音乐的必须是 32 位:塞进去一个 64 位 DLL 会让它直接起不来。
       # 所以在发布前先读 PE 头,不对就中断,别让产物出门。
-      - name: 校验产物是 32 位
+      # 注意:这一步刻意写成纯 ASCII,且用 GITHUB_WORKSPACE 拼绝对路径 ——
+      # Windows PowerShell 5.1 读无 BOM 的 UTF-8 会按 GBK 解码,而 .NET 的相对路径
+      # 解析的是进程当前目录而不是 PowerShell 的位置。
+      - name: Check payload.dll is 32-bit
         shell: powershell
         run: |
-          $dll = "target/i686-pc-windows-msvc/release/payload.dll"
+          $dll = Join-Path $env:GITHUB_WORKSPACE 'target/i686-pc-windows-msvc/release/payload.dll'
+          Get-ChildItem -Recurse -Filter payload.dll -Path (Join-Path $env:GITHUB_WORKSPACE 'target') |
+            ForEach-Object { "found: $($_.FullName)" }
+          if (-not (Test-Path $dll)) { throw "not found: $dll" }
           $bytes = [IO.File]::ReadAllBytes($dll)
           $peOffset = [BitConverter]::ToInt32($bytes, 0x3C)
           $machine = [BitConverter]::ToUInt16($bytes, $peOffset + 4)
           if ($machine -ne 0x014C) {
-              throw ('payload.dll 不是 32 位(PE machine = 0x{0:X4},应为 0x014C)' -f $machine)
+              throw ("payload.dll is not 32-bit: PE machine = 0x{0:X4}, expected 0x014C" -f $machine)
           }
-          'OK: {0} ({1:N0} 字节, i386 32 位)' -f $dll, $bytes.Length
+          "OK: {0} bytes, PE machine 0x{1:X4} (i386)" -f $bytes.Length, $machine
 
       - name: 创建 Release
         uses: softprops/action-gh-release@v2
