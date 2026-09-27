@@ -1,0 +1,3 @@
+# QQ 音乐是 32 位进程,payload 必须是 i686。
+[build]
+target = "i686-pc-windows-msvc"
