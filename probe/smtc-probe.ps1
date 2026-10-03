@@ -52,6 +52,9 @@ function Get-TargetSession($manager) {
 }
 
 $sessions = @($manager.GetSessions())
+if ($Match) {
+    $sessions = @($sessions | Where-Object { $_.SourceAppUserModelId -like "*$Match*" })
+}
 "会话数: $($sessions.Count)"
 
 foreach ($session in $sessions) {

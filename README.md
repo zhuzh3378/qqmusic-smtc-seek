@@ -76,14 +76,30 @@ cargo build --release --target i686-pc-windows-msvc
 
 ### 部署
 
+**最省事:双击 `plugin.bat`** —— 菜单选 安装 / 卸载 / 查看状态。它会自动申请管理员权限,也可以命令行调用:
+
+```powershell
+.\plugin.bat install      # 安装并重启 QQ 音乐
+.\plugin.bat uninstall    # 卸载
+.\plugin.bat check        # 只读:报告目录里现在装的是哪个插件、位数对不对
+```
+
+把 Releases 里下载的 `payload.dll` 放在 `plugin.bat` 同目录,它就会用这一份;否则用 `target\...` 下的编译产物。
+
+> `plugin.bat` 刻意写成纯 ASCII:cmd.exe 按字节偏移续读 .bat,`chcp 65001` 下的多字节中文会让偏移错位,把下一行的残片当命令执行。中文提示都放在 `.ps1` 里(UTF-8 带 BOM,安全)。
+
+或者直接用脚本:
+
 ```powershell
 .\scripts\install.ps1 -Restart
 ```
 
-脚本从注册表 `InstallLocation` 解析真实安装目录并写入。QQ 音乐自升级后真实目录是带版本号的一层,例如
-`C:\Program Files (x86)\Tencent\QQMusic\QQMusic2271.13.31.33\`,而外层 `QQMusic\` 只剩上一版的残留文件 —— **必须放进当前版本目录**,放外层等于没装。
+脚本从注册表 `InstallLocation` 解析真实安装目录并写入。QQ 音乐自升级后真实目录**可能**是带版本号的一层,例如
+`C:\Program Files (x86)\Tencent\QQMusic\QQMusic2271.13.31.33\`,而外层 `QQMusic\` 只剩上一版的残留文件 —— **必须装进当前真正在用的那个目录**,装错地方等于没装。脚本以注册表为准;拿不准就先跑 `.\plugin.bat check`,它会把解析到的目录和目录里的 `msimg32.dll` 来源一起报出来。
 
-手动安装等价于:把 `payload.dll` 改名为 `msimg32.dll`,放进上面那个版本目录。
+手动安装等价于:把 `payload.dll` 改名为 `msimg32.dll`,放进上面那个目录。
+
+> 另一个判据:如果外层 `QQMusic\` 里**没有** `QQMusicAgent.exe`,说明外层只是升级残留、真正在用的是版本子目录;从外层启动会报"皮肤引擎初始化失败 InitPlatform faild"。
 
 ### 验证
 

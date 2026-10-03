@@ -1,6 +1,6 @@
-﻿# 卸载:只删我们自己写进版本目录的 msimg32.dll。
-# 外层 QQMusic\ 里那份是用户自己的旧版注入文件,不在本脚本处理范围内。
-# 历史版本还会把 SMTCFeature.dll 改成代理,这里一并还原。
+﻿# 卸载:删掉注册表所指安装目录里的 msimg32.dll(装了插件的那个目录)。
+# 如果安装时备份过原始文件则还原备份。
+# 历史版本还会把 SMTCFeature.dll 换成代理,这里一并还原。
 #   .\uninstall.ps1
 [CmdletBinding()]
 param(
